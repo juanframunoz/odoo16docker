@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Solicitar dominio y correo electrónico
+read -p "Introduce tu dominio (ejemplo: tudominio.com): " ODOO_DOMAIN
+read -p "Introduce tu correo electrónico para Let's Encrypt: " EMAIL
+
 # Configurar el firewall (ufw)
 echo "Configurando el firewall..."
 sudo apt install ufw -y
@@ -23,7 +27,6 @@ sudo apt install nginx -y
 
 # Crear un archivo de configuración de Nginx para Odoo
 echo "Creando configuración de Nginx para Odoo..."
-ODOO_DOMAIN="tudominio.com"  # Cambia esto por tu dominio
 sudo bash -c "cat > /etc/nginx/sites-available/odoo <<EOL
 server {
     listen 80;
@@ -42,11 +45,23 @@ EOL"
 # Habilitar la configuración de Nginx
 echo "Habilitando la configuración de Nginx..."
 sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+sudo rm -f /etc/nginx/sites-enabled/default  # Eliminar configuración por defecto si existe
+
+# Verificar la configuración de Nginx
+echo "Verificando la configuración de Nginx..."
+sudo nginx -t
+if [ $? -ne 0 ]; then
+    echo "Error en la configuración de Nginx. Por favor, revisa el archivo /etc/nginx/sites-available/odoo."
+    exit 1
+fi
+
+# Reiniciar Nginx
+echo "Reiniciando Nginx..."
+sudo systemctl restart nginx
 
 # Obtener un certificado SSL con Certbot
 echo "Obteniendo un certificado SSL con Certbot..."
-sudo certbot --nginx -d $ODOO_DOMAIN --non-interactive --agree-tos --email tucorreo@example.com  # Cambia el correo
+sudo certbot --nginx -d $ODOO_DOMAIN --non-interactive --agree-tos --email $EMAIL
 
 # Modificar el archivo docker-compose.yml para usar SSL
 echo "Modificando docker-compose.yml para usar SSL..."
